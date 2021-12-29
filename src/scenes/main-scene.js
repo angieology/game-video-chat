@@ -38,8 +38,6 @@ export default class MainScene extends Phaser.Scene {
   }
 
   create() {
-    // open video
-    openVideo();
     const scene = this;
 
     // Cursors
@@ -48,10 +46,15 @@ export default class MainScene extends Phaser.Scene {
     // Create socket
     scene.socket = io();
 
+    // open video
+    openVideo(scene.socket, this.myPeer);
+
     // Launch waiting room
-    scene.scene.launch("WaitingRoom", {
-      socket: scene.socket,
-      peerId: this.myPeer.id,
+    this.myPeer.on("open", (id) => {
+      scene.scene.launch("WaitingRoom", {
+        socket: scene.socket,
+        peerId: id,
+      });
     });
 
     // Animations
