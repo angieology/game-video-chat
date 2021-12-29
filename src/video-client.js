@@ -1,9 +1,9 @@
 // socket connect to root path of localhost
 import Peer from "peerjs";
 
-const socket = io("/");
+// const socket = io("/");
 
-const myPeer = new Peer();
+// const myPeer = new Peer();
 
 const videoGrid = document.getElementById("video-grid");
 
@@ -13,7 +13,7 @@ myVideo.controls = true;
 
 const peers = {};
 // try to connect our video
-export function openVideo() {
+export function openVideo(socket, myPeer) {
   navigator.mediaDevices
     .getUserMedia({
       video: true,
@@ -24,55 +24,56 @@ export function openVideo() {
       console.log("opening video");
       addVideoStream(myVideo, stream);
 
-      // // RECEIVE CALLS
-      // myPeer.on("call", (call) => {
-      //   // when someone calls us, send them our stream (sends user B's video to our screen user A)
-      //   console.log("receiving call ☎️...");
-      //   call.answer(stream);
+      // RECEIVE CALLS
+      myPeer.on("call", (call) => {
+        // when someone calls us, send them our stream (sends user B's video to our screen user A)
+        console.log("receiving call ☎️...");
+        call.answer(stream);
 
-      //   // other user video stream (user A video to user B screen)
-      //   const video = document.createElement("video");
+        // other user video stream (user A video to user B screen)
+        const video = document.createElement("video");
 
-      //   call.on("stream", (userVideoStream) => {
-      //     addVideoStream(video, userVideoStream);
+        call.on("stream", (userVideoStream) => {
+          addVideoStream(video, userVideoStream);
 
-      //     // get reference to all existing user connections so we can remove videos on disconnect
-      //     call.on("close", () => {
-      //       video.remove();
-      //     });
-      //     Object.keys(myPeer.connections).forEach((userId) => {
-      //       peers[userId] = call;
-      //     });
-      //   });
-      // });
+          // get reference to all existing user connections so we can remove videos on disconnect
+          call.on("close", () => {
+            video.remove();
+          });
+          Object.keys(myPeer.connections).forEach((peerId) => {
+            peers[peerId] = call;
+          });
+        });
+      });
 
-      // socket.on("user-connected", (userId) => {
-      //   console.log("user connected: ", userId);
-      //   connectToNewUser(userId, stream);
-      // });
+      socket.on("newPlayer", (userData) => {
+        console.log(userData);
+        const { playerInfo: { peerId } } = userData;
+        console.log("newPlayer: ", peerId);
+        connectToNewUser(myPeer, peerId, stream);
+      });
+
+      socket.on("disconnected", (userData) => {
+        const { playerInfo: { peerId } } = userData;
+        console.log("disconnected: ", peerId);
+      
+        if (peers[peerId]) {
+          peers[userId].close();
+        }
+      });
     });
 }
 
-socket.on("user-disconnected", (userId) => {
-  console.log("disconnected: ", userId);
-
-  if (peers[userId]) {
-    peers[userId].close();
-  }
-});
-
-socket.on("user-connected");
-
-myPeer.on("open", (id) => {
-  socket.emit("join-room", ROOM_ID, id);
-});
+// myPeer.on("open", (id) => {
+//   socket.emit("join-room", ROOM_ID, id);
+// });
 
 /**
  * make calls when new user connect to our room
  * @param {uuid} userId
  * @param {*} stream
  */
-function connectToNewUser(userId, stream) {
+function connectToNewUser(myPeer, userId, stream) {
   // send this user our video stream
   const call = myPeer.call(userId, stream);
   const video = document.createElement("video");
