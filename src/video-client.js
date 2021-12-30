@@ -5,7 +5,7 @@ let mySocket;
 
 const peers = {};
 // try to connect our video
-export function openVideo(socket, myPeer) {
+function openVideo(socket, myPeer) {
   mySocket = socket;
   navigator.mediaDevices
     .getUserMedia({
@@ -22,7 +22,7 @@ export function openVideo(socket, myPeer) {
         // when someone calls us, send them our stream (sends user B's video to our screen user A)
         console.log("receiving call ☎️...");
         call.answer(stream);
-
+        console.log("sending our video stream to other user");
         // other user video stream (user A video to user B screen)
         const [video, videoContainer] = createVideoContainer(false, -1)
 
@@ -45,6 +45,12 @@ export function openVideo(socket, myPeer) {
         console.log("newPlayer: ", peerId);
         connectToNewUser(myPeer, peerId, stream, playerId);
       });
+      socket.on("startCall", (peerId) => {
+        console.log("starting call event triggered, with: ", peerId);
+        if (!peers[peerId]) {
+          connectToNewUser(myPeer, peerId, stream);
+        }
+      });
 
       socket.on("disconnected", (userData) => {
         const { peerId } = userData;
@@ -52,6 +58,10 @@ export function openVideo(socket, myPeer) {
 
         if (peers[peerId]) {
           peers[peerId].close();
+      socket.on("endCall", ({ peerId }) => {
+        if (peers[peerId]) {
+          peers[peerId].close();
+          delete peers[peerId];
         }
       });
       socket.on('mute', (kind, playerId) => {
@@ -67,10 +77,6 @@ export function openVideo(socket, myPeer) {
       });
     });
 }
-
-// myPeer.on("open", (id) => {
-//   socket.emit("join-room", ROOM_ID, id);
-// });
 
 /**
  * make calls when new user connect to our room
@@ -90,11 +96,15 @@ function connectToNewUser(myPeer, userId, stream, playerId) {
     console.log("hanging up user: ", userId);
     videoContainer.remove(); // cleanup video when they lave
   });
-  peers[userId] = call;
+  peers[peerId] = call;
 }
 
 function addVideoStream(videoContainer, video, stream) {
   video.srcObject = stream;
+  video.addEventListener("loadeddata", () => {
+    // once it loads stream, play video
+    video.play();
+  });
   video.addEventListener("loadedmetadata", () => {
     video.play();
     // once it loads stream, play video
@@ -144,3 +154,5 @@ function createVideoContainer(isSelfVideo, playerId) {
 
   return [video, videoContainer];
 }
+
+export default openVideo;

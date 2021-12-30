@@ -2,7 +2,38 @@ import Phaser from "phaser";
 import Peer from "peerjs";
 
 import { characterNames, actions, animations } from "../constants";
-import { openVideo } from "../video-client";
+import openVideo from "../video-client";
+
+function detectCloseness({
+  actor,
+  otherActor,
+  socket,
+  roomKey,
+  currentPeerId,
+  currentSocketId,
+}) {
+  // detect closeness to my player
+  const deltaX = Math.abs(actor.x - otherActor.x);
+  const deltaY = Math.abs(actor.y - otherActor.y);
+  const MAX_DISTANCE = 250;
+  if (deltaX < MAX_DISTANCE && deltaY < MAX_DISTANCE) {
+    console.log("player close detected");
+    socket.emit("playerNear", {
+      currentPeerId,
+      currentSocketId,
+      otherActor,
+      roomKey,
+    });
+  } else {
+    console.log("player far detected");
+    socket.emit("playerFar", {
+      currentPeerId,
+      currentSocketId,
+      otherActor,
+      roomKey,
+    });
+  }
+}
 
 export default class MainScene extends Phaser.Scene {
   constructor() {
@@ -170,6 +201,15 @@ export default class MainScene extends Phaser.Scene {
       const { playerInfo, numPlayers } = data;
       scene.addOtherPlayers(scene, playerInfo);
       scene.state.numPlayers = numPlayers;
+
+      detectCloseness({
+        actor: this.actor,
+        otherActor: playerInfo,
+        socket: this.socket,
+        roomKey: scene.state.roomKey,
+        currentSocketId: this.socket.id,
+        currentPeerId: this.myPeer.id, // TODO add to 'this actor'
+      });
     });
 
     this.socket.on("playerMoved", (playerInfo) => {
@@ -187,6 +227,15 @@ export default class MainScene extends Phaser.Scene {
             otherActor.direction = direction;
           }
         }
+        // detect closeness to my player
+        detectCloseness({
+          actor: this.actor,
+          otherActor,
+          socket: this.socket,
+          roomKey: scene.state.roomKey,
+          currentSocketId: this.socket.id,
+          currentPeerId: this.myPeer.id, // TODO add to 'this actor'
+        });
       });
     });
 
@@ -249,24 +298,21 @@ export default class MainScene extends Phaser.Scene {
       // Normalize and scale velocity so actor can't move faster diagonally
       this.actor.body.velocity.normalize().scale(speed);
 
-      const { x } = this.actor;
-      const { y } = this.actor;
-      const { direction } = this.actor;
-      const { prevPosition } = this.actor;
+      const { x, y, direction, prevPosition } = this.actor;
 
       if (prevPosition && (x !== prevPosition.x || y !== prevPosition.y)) {
         this.actor.moving = true;
         this.socket.emit("playerMovement", {
-          x: this.actor.x,
-          y: this.actor.y,
-          direction: this.actor.direction,
+          x,
+          y,
+          direction,
           roomKey: scene.state.roomKey,
         });
       } else {
         if (this.actor.moving) {
           this.socket.emit("playerStopping", {
-            x: this.actor.x,
-            y: this.actor.y,
+            x,
+            y,
             roomKey: scene.state.roomKey,
           });
         }
@@ -276,9 +322,9 @@ export default class MainScene extends Phaser.Scene {
 
       // Save previous position data
       this.actor.prevPosition = {
-        x: this.actor.x,
-        y: this.actor.y,
-        direction: this.actor.direction,
+        x,
+        y,
+        direction,
       };
 
       this.actor.nametag.setPosition(
