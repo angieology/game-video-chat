@@ -45,11 +45,11 @@ export function openVideo(socket, myPeer) {
       });
 
       socket.on("disconnected", (userData) => {
-        const { playerInfo: { peerId } } = userData;
+        const { peerId } = userData;
         console.log("disconnected: ", peerId);
       
         if (peers[peerId]) {
-          peers[userId].close();
+          peers[peerId].close();
         }
       });
     });
