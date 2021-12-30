@@ -1,10 +1,12 @@
 const videoGrid = document.getElementById("video-grid");
 
-const [myVideo, myVideoContainer] = createVideoContainer(true);
+const [myVideo, myVideoContainer] = createVideoContainer(true, -1)
+let mySocket;
 
 const peers = {};
 // try to connect our video
 export function openVideo(socket, myPeer) {
+  mySocket = socket;
   navigator.mediaDevices
     .getUserMedia({
       video: true,
@@ -22,7 +24,7 @@ export function openVideo(socket, myPeer) {
         call.answer(stream);
 
         // other user video stream (user A video to user B screen)
-        const [video, videoContainer] = createVideoContainer(false);
+        const [video, videoContainer] = createVideoContainer(false, -1)
 
         call.on("stream", (userVideoStream) => {
           addVideoStream(videoContainer, video, userVideoStream);
@@ -39,11 +41,9 @@ export function openVideo(socket, myPeer) {
 
       socket.on("newPlayer", (userData) => {
         console.log(userData);
-        const {
-          playerInfo: { peerId },
-        } = userData;
+        const { playerInfo: { peerId, playerId } } = userData;
         console.log("newPlayer: ", peerId);
-        connectToNewUser(myPeer, peerId, stream);
+        connectToNewUser(myPeer, peerId, stream, playerId);
       });
 
       socket.on("disconnected", (userData) => {
@@ -53,6 +53,17 @@ export function openVideo(socket, myPeer) {
         if (peers[peerId]) {
           peers[peerId].close();
         }
+      });
+      socket.on('mute', (kind, playerId) => {
+        console.log("Received message")
+        console.log("socket id" + socket.id)
+        console.log("playerid" + playerId)
+        if(socket.id !== playerId) return
+        myVideo.srcObject.getTracks().forEach(t => {
+          if (t.kind == kind) {
+            t.enabled = !t.enabled
+          }
+        })
       });
     });
 }
@@ -66,10 +77,10 @@ export function openVideo(socket, myPeer) {
  * @param {uuid} userId
  * @param {*} stream
  */
-function connectToNewUser(myPeer, userId, stream) {
+function connectToNewUser(myPeer, userId, stream, playerId) {
   // send this user our video stream
   const call = myPeer.call(userId, stream);
-  const [video, videoContainer] = createVideoContainer(false);
+  const [video, videoContainer] = createVideoContainer(false, playerId)
   // when they send us back their video stream, calls this event
   call.on("stream", (userVideoStream) => {
     // add to our list of videos on screen
@@ -91,35 +102,36 @@ function addVideoStream(videoContainer, video, stream) {
   videoGrid.append(videoContainer);
 }
 
-let toggleMedia = (btn, k) =>
-  myVideo.srcObject.getTracks().forEach((t) => {
-    // t.kind == k && t.stop()
-    if (t.kind == k) {
-      t.enabled = !t.enabled;
-      const mediaType = t.kind.charAt(0).toUpperCase() + t.kind.slice(1);
-      console.log(`${t.enabled ? "Stop" : "Start"} ${mediaType}`);
-      btn.innerHTML = `${t.enabled ? "Stop" : "Start"} ${mediaType}`;
+let toggleMedia = (playerId, btn, k) => myVideo.srcObject.getTracks().forEach(t => {
+  // t.kind == k && t.stop()
+  if (t.kind == k) {
+    if (playerId !== -1) {
+      mySocket.emit('mute', k, playerId)
+    } else {
+      t.enabled = !t.enabled
     }
-  });
+    const mediaType = t.kind.charAt(0).toUpperCase() + t.kind.slice(1)
+    btn.innerHTML = `${t.enabled ? 'Stop' : 'Start'} ${mediaType}`
+  }
+});
 
-function createVideoContainer(isSelfVideo) {
-  const videoContainer = document.createElement("div");
-  videoContainer.className = "video-container";
+function createVideoContainer(isSelfVideo, playerId) {
+  const videoContainer = document.createElement('div');
   const video = document.createElement("video");
   const videoControls = document.createElement("div");
   videoControls.className = "video-controls";
   video.muted = isSelfVideo; // don't listen to your own video. doesn't mute for other people
   video.controls = false;
-  videoContainer.append(video);
+  videoContainer.append(video)
   videoContainer.append(videoControls);
-  const videoButton = document.createElement("button");
-  videoButton.innerHTML = "Stop Video";
-  videoButton.onclick = () => toggleMedia(videoButton, "video");
-  videoControls.append(videoButton);
-  const audioButton = document.createElement("button");
-  audioButton.innerHTML = "Stop Audio";
-  audioButton.onclick = () => toggleMedia(audioButton, "audio");
-  videoControls.append(audioButton);
+  const videoButton = document.createElement('button');
+  videoButton.innerHTML = "Stop Video"
+  videoButton.onclick = () => toggleMedia(playerId, videoButton, 'video')
+  videoControls.append(videoButton)
+  const audioButton = document.createElement('button');
+  audioButton.innerHTML = "Stop Audio"
+  audioButton.onclick = () => toggleMedia(playerId, audioButton, 'audio')
+  videoControls.append(audioButton)
 
   // if(isSelfVideo) {
   //   const muteAll = document.createElement('button')

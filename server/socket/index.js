@@ -138,6 +138,20 @@ module.exports = (io) => {
       };
       socket.emit("roomCreated", key);
     });
+
+    socket.on('mute', async (kind, playerId) => {
+      let roomKey = 0;
+      for (const currentRoomKey in gameRooms) {
+        const currentRoom = gameRooms[currentRoomKey];
+        if (currentRoom.players.hasOwnProperty(socket.id)) {
+          roomKey = currentRoomKey;
+          break;
+        }
+      }
+
+      console.log(`muting ${kind} ${playerId}`)
+      socket.to(roomKey).emit('mute', kind, playerId);
+    })
   });
 };
 
