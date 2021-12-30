@@ -1,15 +1,6 @@
-// socket connect to root path of localhost
-import Peer from "peerjs";
-
-// const socket = io("/");
-
-// const myPeer = new Peer();
-
 const videoGrid = document.getElementById("video-grid");
 
-const myVideo = document.createElement("video");
-myVideo.muted = true; // don't listen to your own video. doesn't mute for other people
-myVideo.controls = true;
+const [myVideo, myVideoContainer] = createVideoContainer(true)
 
 const peers = {};
 // try to connect our video
@@ -22,7 +13,7 @@ export function openVideo(socket, myPeer) {
     .then((stream) => {
       // tell video object to use the stream
       console.log("opening video");
-      addVideoStream(myVideo, stream);
+      addVideoStream(myVideoContainer, myVideo, stream);
 
       // RECEIVE CALLS
       myPeer.on("call", (call) => {
@@ -31,14 +22,14 @@ export function openVideo(socket, myPeer) {
         call.answer(stream);
 
         // other user video stream (user A video to user B screen)
-        const video = document.createElement("video");
+        const [video, videoContainer] = createVideoContainer(false)
 
         call.on("stream", (userVideoStream) => {
-          addVideoStream(video, userVideoStream);
+          addVideoStream(videoContainer, video, userVideoStream);
 
           // get reference to all existing user connections so we can remove videos on disconnect
           call.on("close", () => {
-            video.remove();
+            videoContainer.remove();
           });
           Object.keys(myPeer.connections).forEach((peerId) => {
             peers[peerId] = call;
@@ -76,24 +67,59 @@ export function openVideo(socket, myPeer) {
 function connectToNewUser(myPeer, userId, stream) {
   // send this user our video stream
   const call = myPeer.call(userId, stream);
-  const video = document.createElement("video");
+  const [video, videoContainer] = createVideoContainer(false)
   // when they send us back their video stream, calls this event
   call.on("stream", (userVideoStream) => {
     // add to our list of videos on screen
-    addVideoStream(video, userVideoStream);
+    addVideoStream(videoContainer, video, userVideoStream);
   });
   call.on("close", () => {
     console.log("hanging up user: ", userId);
-    video.remove(); // cleanup video when they lave
+    videoContainer.remove(); // cleanup video when they lave
   });
   peers[userId] = call;
 }
 
-function addVideoStream(video, stream) {
+function addVideoStream(videoContainer, video, stream) {
   video.srcObject = stream;
   video.addEventListener("loadedmetadata", () => {
     video.play();
     // once it loads stream, play video
   });
-  videoGrid.append(video);
+  videoGrid.append(videoContainer);
+}
+
+let toggleMedia = (btn, k) => myVideo.srcObject.getTracks().forEach(t => {
+  // t.kind == k && t.stop()
+  if (t.kind == k) {
+    t.enabled = !t.enabled
+    const mediaType = t.kind.charAt(0).toUpperCase() + t.kind.slice(1)
+    console.log(`${t.enabled ? 'Stop' : 'Start'} ${mediaType}`)
+    btn.innerHTML = `${t.enabled ? 'Stop' : 'Start'} ${mediaType}`
+  }
+});
+
+function createVideoContainer(isSelfVideo) {
+  const videoContainer = document.createElement('div');
+  const video = document.createElement("video");
+  video.muted = isSelfVideo; // don't listen to your own video. doesn't mute for other people
+  video.controls = false;
+  videoContainer.append(video)
+  const videoButton = document.createElement('button');
+  videoButton.innerHTML = "Stop Video"
+  videoButton.onclick = () => toggleMedia(videoButton, 'video')
+  videoContainer.append(videoButton)
+  const audioButton = document.createElement('button');
+  audioButton.innerHTML = "Stop Audio"
+  audioButton.onclick = () => toggleMedia(audioButton, 'audio')
+  videoContainer.append(audioButton)
+
+  // if(isSelfVideo) {
+  //   const muteAll = document.createElement('button')
+  //   muteAll.innerHTML = "Mute Others"
+  //   muteAll.onclick = () => muteOthers();
+  //   videoContainer.append(muteAll);
+  // }
+
+  return [video, videoContainer];
 }
