@@ -28,7 +28,6 @@ module.exports = (io) => {
     socket.on("closeBy", (data) => {
       const { roomKey, playerId } = data;
       const roomInfo = gameRooms[roomKey];
-      console.log(roomInfo.players)
       io.to(playerId).emit("videoCall", {
         playerInfo: roomInfo.players[socket.id],
       });
@@ -37,7 +36,6 @@ module.exports = (io) => {
     socket.on("farAway", (data)=>{
       const { roomKey, playerId } = data;
       const roomInfo = gameRooms[roomKey];
-      console.log(roomInfo.players)
       io.to(playerId).emit("stopCall", {
         playerInfo: roomInfo.players[socket.id],
       });
