@@ -104,6 +104,7 @@ module.exports = (io) => {
       if (roomInfo) {
         console.log(`User ${socket.id} disconnected from room: ${roomKey}`);
         // Remove player
+        const peerId = roomInfo.players[socket.id].peerId;
         delete roomInfo.players[socket.id];
         // Update number of players
         roomInfo.numPlayers = Object.keys(roomInfo.players).length;
@@ -111,6 +112,7 @@ module.exports = (io) => {
         socket.to(roomKey).emit("disconnected", {
           playerId: socket.id,
           numPlayers: roomInfo.numPlayers,
+          peerId: peerId,
         });
       }
     });
