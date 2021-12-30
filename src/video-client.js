@@ -111,7 +111,9 @@ let toggleMedia = (playerId, btn, k) => myVideo.srcObject.getTracks().forEach(t 
       t.enabled = !t.enabled
     }
     const mediaType = t.kind.charAt(0).toUpperCase() + t.kind.slice(1)
-    btn.innerHTML = `${t.enabled ? 'Stop' : 'Start'} ${mediaType}`
+    const [currentText, _] = btn.innerHTML.split(" ");
+    const updateText = currentText === 'Stop' ? 'Start' : 'Stop';
+    btn.innerHTML = `${updateText} ${mediaType}`;
   }
 });
 
