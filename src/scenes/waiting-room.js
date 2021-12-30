@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { openVideo } from "../video-client";
 
 export default class WaitingRoom extends Phaser.Scene {
   constructor() {
@@ -9,7 +10,7 @@ export default class WaitingRoom extends Phaser.Scene {
 
   init(data) {
     this.socket = data.socket;
-    this.peerId = data.peerId;
+    this.myPeer = data.myPeer;
   }
 
   preload() {
@@ -96,9 +97,11 @@ export default class WaitingRoom extends Phaser.Scene {
       scene.notValidText.setText("Invalid Room Key");
     });
     scene.socket.on("keyIsValid", (data) => {
-      data.peerId = this.peerId;
+      data.peerId = this.myPeer.id;
       scene.socket.emit("joinRoom", data);
       scene.scene.stop("WaitingRoom");
+      // open video
+      openVideo(scene.socket, this.myPeer)
     });
   }
 

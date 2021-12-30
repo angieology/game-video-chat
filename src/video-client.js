@@ -1,10 +1,3 @@
-// socket connect to root path of localhost
-import Peer from "peerjs";
-
-// const socket = io("/");
-
-// const myPeer = new Peer();
-
 const videoGrid = document.getElementById("video-grid");
 
 const myVideo = document.createElement("video");
@@ -46,27 +39,40 @@ export function openVideo(socket, myPeer) {
         });
       });
 
-      socket.on("newPlayer", (userData) => {
+      socket.on("videoCall", (userData) => {
         console.log(userData);
         const { playerInfo: { peerId } } = userData;
-        console.log("newPlayer: ", peerId);
+        console.log("videoCall: ", peerId);
         connectToNewUser(myPeer, peerId, stream);
       });
 
       socket.on("disconnected", (userData) => {
-        const { playerInfo: { peerId } } = userData;
+        const { peerId } = userData;
         console.log("disconnected: ", peerId);
       
         if (peers[peerId]) {
-          peers[userId].close();
+          peers[peerId].close();
+        }
+      });
+
+      socket.on("stopCall", (userData) => {
+        const { playerInfo: { peerId } } = userData;
+        console.log("stopCall: ", peerId);
+      
+        if (peers[peerId]) {
+          peers[peerId].close();
         }
       });
     });
 }
 
-// myPeer.on("open", (id) => {
-//   socket.emit("join-room", ROOM_ID, id);
-// });
+export function stopVideo(peerId) {
+  console.log("stop video: ", peerId)
+  if (peers[peerId]) {
+    console.log("stop video...")
+    peers[peerId].close();
+  }
+}
 
 /**
  * make calls when new user connect to our room

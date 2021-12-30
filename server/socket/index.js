@@ -25,12 +25,29 @@ module.exports = (io) => {
       `A socket connection to the server has been made: ${socket.id}`
     );
 
+    socket.on("closeBy", (data) => {
+      const { roomKey, playerId } = data;
+      const roomInfo = gameRooms[roomKey];
+      console.log(roomInfo.players)
+      io.to(playerId).emit("videoCall", {
+        playerInfo: roomInfo.players[socket.id],
+      });
+    });
+
+    socket.on("farAway", (data)=>{
+      const { roomKey, playerId } = data;
+      const roomInfo = gameRooms[roomKey];
+      console.log(roomInfo.players)
+      io.to(playerId).emit("stopCall", {
+        playerInfo: roomInfo.players[socket.id],
+      });
+    });
+
     socket.on("joinRoom", (data) => {
       const { username, code: roomKey, sprite, peerId } = data;
       socket.join(roomKey);
 
       console.log("socket id", socket.id);
-      console.log({ peerId });
 
       const roomInfo = gameRooms[roomKey];
       roomInfo.players[socket.id] = {
@@ -103,6 +120,7 @@ module.exports = (io) => {
 
       if (roomInfo) {
         console.log(`User ${socket.id} disconnected from room: ${roomKey}`);
+        const peerId = roomInfo.players[socket.id].peerId
         // Remove player
         delete roomInfo.players[socket.id];
         // Update number of players
@@ -111,6 +129,7 @@ module.exports = (io) => {
         socket.to(roomKey).emit("disconnected", {
           playerId: socket.id,
           numPlayers: roomInfo.numPlayers,
+          peerId: peerId,
         });
       }
     });

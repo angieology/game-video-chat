@@ -2,7 +2,8 @@ import Phaser from "phaser";
 import Peer from "peerjs";
 
 import { characterNames, actions, animations } from "../constants";
-import { openVideo } from "../video-client";
+import { openVideo, stopVideo } from "../video-client";
+import { closeEnough } from "../utils";
 
 export default class MainScene extends Phaser.Scene {
   constructor() {
@@ -46,14 +47,11 @@ export default class MainScene extends Phaser.Scene {
     // Create socket
     scene.socket = io();
 
-    // open video
-    openVideo(scene.socket, this.myPeer);
-
     // Launch waiting room
     this.myPeer.on("open", (id) => {
       scene.scene.launch("WaitingRoom", {
         socket: scene.socket,
-        peerId: id,
+        myPeer: this.myPeer,
       });
     });
 
@@ -192,7 +190,7 @@ export default class MainScene extends Phaser.Scene {
 
     this.socket.on("playerStopped", (playerInfo) => {
       const { x, y, playerId } = playerInfo;
-
+      const isClose = closeEnough({x,y}, {x:this.actor.x, y: this.actor.y})
       scene.otherPlayers.getChildren().forEach((otherActor) => {
         if (
           playerId === otherActor.playerId &&
@@ -202,6 +200,13 @@ export default class MainScene extends Phaser.Scene {
           otherActor.anims.play(`${otherActor.sprite}_idle_down`, true);
         }
       });
+      if(isClose) {
+        this.socket.emit("closeBy", {roomKey: scene.state.roomKey, playerId: playerId });
+      }
+      else {
+        stopVideo(playerInfo.peerId);
+        this.socket.emit("farAway", {roomKey: scene.state.roomKey, playerId: playerId });
+      }
     });
 
     // Disconnection
