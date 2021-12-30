@@ -25,12 +25,41 @@
             height: 100px;
             object-fit: cover;
         }
+        body {
+            display: grid;
+            grid-template-columns: 60% 40%;
+        }
+        iframe {
+            position: absolute;
+            right: 0;
+            height: 100%;
+            width: 30vw;
+        }
+
+        .hidden {
+            position: absolute;
+            width:0;
+            height:0;
+            border:0;
+        }
     </style>
+    <script>
+        document.onkeypress = function (e) {
+        e = e || window.event;
+        if (e.keyCode==13) {
+            var iframe = document.getElementById('whiteboard')
+            iframe.classList.toggle("hidden");
+        }     
+    };
+    </script>
 </head>
 
 <body>
     <div id="game"></div>
     <div id="video-grid"></div>
+    <iframe id="whiteboard" src="http://localhost:3000/100" sandbox="allow-same-origin allow-popups allow-scripts" title="question interface" vis></iframe>
+    
 </body>
+
 
 </html>
