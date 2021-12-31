@@ -46,3 +46,7 @@ iframe {
   height: 0;
   border: 0;
 }
+
+.visibility-hidden {
+  visibility: hidden;
+}

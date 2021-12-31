@@ -1,6 +1,6 @@
 const videoGrid = document.getElementById("video-grid");
 
-const [myVideo, myVideoContainer] = createVideoContainer(true, -1)
+const [myVideo, myVideoContainer] = createVideoContainer(true, -1);
 let mySocket;
 
 const peers = {};
@@ -22,7 +22,7 @@ function openVideo(socket, myPeer) {
         console.log("receiving call ☎️...");
         call.answer(stream);
         // other user video stream (user A video to user B screen)
-        const [video, videoContainer] = createVideoContainer(false, -1)
+        const [video, videoContainer] = createVideoContainer(false, -1);
 
         call.on("stream", (userVideoStream) => {
           addVideoStream(videoContainer, video, userVideoStream);
@@ -33,14 +33,14 @@ function openVideo(socket, myPeer) {
           });
           Object.keys(myPeer.connections).forEach((peerId) => {
             peers[peerId] = call;
-            peers[peerId].video = video;
+            peers[peerId].video = videoContainer;
           });
         });
       });
 
       socket.on("startCall", (peerId) => {
         if (peers[peerId]) {
-          peers[peerId].video.classList.remove("hidden");
+          peers[peerId].video.classList.remove("visibility-hidden");
         }
       });
 
@@ -54,25 +54,26 @@ function openVideo(socket, myPeer) {
 
       socket.on("endCall", (peerId) => {
         if (peers[peerId]) {
-          peers[peerId].video.classList.add("hidden");
+          peers[peerId].video.classList.add("visibility-hidden");
         }
       });
-      socket.on('mute', (kind, playerId) => {
-        console.log("Received message")
-        console.log("socket id" + socket.id)
-        console.log("playerid" + playerId)
-        if(socket.id !== playerId) return
-        myVideo.srcObject.getTracks().forEach(t => {
+      socket.on("mute", (kind, playerId) => {
+        console.log("Received message");
+        console.log("socket id" + socket.id);
+        console.log("playerid" + playerId);
+        if (socket.id !== playerId) return;
+        myVideo.srcObject.getTracks().forEach((t) => {
           if (t.kind == kind) {
-            t.enabled = !t.enabled
+            t.enabled = !t.enabled;
           }
-        })
+        });
+      });
 
       socket.on("newPlayer", (userData) => {
         const {
-          playerInfo: { peerId },
+          playerInfo: { peerId, playerId },
         } = userData;
-        connectToNewUser(myPeer, peerId, stream);
+        connectToNewUser(myPeer, peerId, stream, playerId);
       });
     });
 }
@@ -85,7 +86,7 @@ function openVideo(socket, myPeer) {
 function connectToNewUser(myPeer, peerId, stream, playerId) {
   // send this user our video stream
   const call = myPeer.call(peerId, stream);
-  const [video, videoContainer] = createVideoContainer(false, playerId)
+  const [video, videoContainer] = createVideoContainer(false, playerId);
   // when they send us back their video stream, calls this event
   call.on("stream", (userVideoStream) => {
     // add to our list of videos on screen
@@ -96,7 +97,7 @@ function connectToNewUser(myPeer, peerId, stream, playerId) {
     videoContainer.remove(); // cleanup video when they lave
   });
   peers[peerId] = call;
-  peers[peerId].video = video;
+  peers[peerId].video = videoContainer;
 }
 
 function addVideoStream(videoContainer, video, stream) {
@@ -112,38 +113,39 @@ function addVideoStream(videoContainer, video, stream) {
   videoGrid.append(videoContainer);
 }
 
-let toggleMedia = (playerId, btn, k) => myVideo.srcObject.getTracks().forEach(t => {
-  // t.kind == k && t.stop()
-  if (t.kind == k) {
-    if (playerId !== -1) {
-      mySocket.emit('mute', k, playerId)
-    } else {
-      t.enabled = !t.enabled
+let toggleMedia = (playerId, btn, k) =>
+  myVideo.srcObject.getTracks().forEach((t) => {
+    // t.kind == k && t.stop()
+    if (t.kind == k) {
+      if (playerId !== -1) {
+        mySocket.emit("mute", k, playerId);
+      } else {
+        t.enabled = !t.enabled;
+      }
+      const mediaType = t.kind.charAt(0).toUpperCase() + t.kind.slice(1);
+      const [currentText, _] = btn.innerHTML.split(" ");
+      const updateText = currentText === "Stop" ? "Start" : "Stop";
+      btn.innerHTML = `${updateText} ${mediaType}`;
     }
-    const mediaType = t.kind.charAt(0).toUpperCase() + t.kind.slice(1)
-    const [currentText, _] = btn.innerHTML.split(" ");
-    const updateText = currentText === 'Stop' ? 'Start' : 'Stop';
-    btn.innerHTML = `${updateText} ${mediaType}`;
-  }
-});
+  });
 
 function createVideoContainer(isSelfVideo, playerId) {
-  const videoContainer = document.createElement('div');
+  const videoContainer = document.createElement("div");
   const video = document.createElement("video");
   const videoControls = document.createElement("div");
   videoControls.className = "video-controls";
   video.muted = isSelfVideo; // don't listen to your own video. doesn't mute for other people
   video.controls = false;
-  videoContainer.append(video)
+  videoContainer.append(video);
   videoContainer.append(videoControls);
-  const videoButton = document.createElement('button');
-  videoButton.innerHTML = "Stop Video"
-  videoButton.onclick = () => toggleMedia(playerId, videoButton, 'video')
-  videoControls.append(videoButton)
-  const audioButton = document.createElement('button');
-  audioButton.innerHTML = "Stop Audio"
-  audioButton.onclick = () => toggleMedia(playerId, audioButton, 'audio')
-  videoControls.append(audioButton)
+  const videoButton = document.createElement("button");
+  videoButton.innerHTML = "Stop Video";
+  videoButton.onclick = () => toggleMedia(playerId, videoButton, "video");
+  videoControls.append(videoButton);
+  const audioButton = document.createElement("button");
+  audioButton.innerHTML = "Stop Audio";
+  audioButton.onclick = () => toggleMedia(playerId, audioButton, "audio");
+  videoControls.append(audioButton);
 
   // if(isSelfVideo) {
   //   const muteAll = document.createElement('button')
