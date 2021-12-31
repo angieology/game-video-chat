@@ -35,7 +35,7 @@ export default class WaitingRoom extends Phaser.Scene {
     scene.popUp.fillRect(25, 25, 750, 500);
 
     // Title
-    scene.title = scene.add.text(100, 75, "Overworlder", {
+    scene.title = scene.add.text(100, 75, "Prodigy Plaza", {
       fill: "#000000",
       fontSize: "66px",
       fontStyle: "bold",
