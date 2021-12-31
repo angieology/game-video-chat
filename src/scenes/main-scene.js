@@ -4,6 +4,8 @@ import Peer from "peerjs";
 import { characterNames, actions, animations } from "../constants";
 import openVideo from "../video-client";
 
+let hideVideo;
+
 function detectCloseness({
   actor,
   otherActor,
@@ -20,19 +22,21 @@ function detectCloseness({
     if (otherActor.isInRange !== null && otherActor.isInRange == false) {
       otherActor.isInRange = true;
     }
-    socket.emit("playerNear", {
-      currentSocketId,
-      otherActorPeerId: otherActor.peerId,
-    });
+    hideVideo(otherActor.peerId, false)
+    // socket.emit("playerNear", {
+    //   currentSocketId,
+    //   otherActorPeerId: otherActor.peerId,
+    // });
   } else {
     if (otherActor.isInRange !== null && otherActor.isInRange == true) {
       otherActor.isInRange = false;
     }
-    socket.emit("playerFar", {
-      currentPeerId,
-      currentSocketId,
-      otherActor,
-    });
+    hideVideo(otherActor.peerId, true)
+    // socket.emit("playerFar", {
+    //   currentPeerId,
+    //   currentSocketId,
+    //   otherActor,
+    // });
   }
 }
 
@@ -79,7 +83,7 @@ export default class MainScene extends Phaser.Scene {
     scene.socket = io();
 
     // open video
-    openVideo(scene.socket, this.myPeer);
+    hideVideo = openVideo(scene.socket, this.myPeer);
 
     // Launch waiting room
     this.myPeer.on("open", (id) => {

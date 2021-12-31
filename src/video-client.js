@@ -76,6 +76,15 @@ function openVideo(socket, myPeer) {
         connectToNewUser(myPeer, peerId, stream, playerId);
       });
     });
+    return (peerId, hide) => {
+      if (peers[peerId]) {
+        if(hide) {
+          peers[peerId].video.classList.add("visibility-hidden");
+        } else {
+          peers[peerId].video.classList.remove("visibility-hidden");
+        }
+      }
+    }
 }
 
 /**
