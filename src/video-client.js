@@ -14,7 +14,6 @@ function openVideo(socket, myPeer) {
     })
     .then((stream) => {
       // tell video object to use the stream
-      console.log("opening video");
       addVideoStream(myVideoContainer, myVideo, stream);
 
       // RECEIVE CALLS
@@ -22,7 +21,6 @@ function openVideo(socket, myPeer) {
         // when someone calls us, send them our stream (sends user B's video to our screen user A)
         console.log("receiving call ☎️...");
         call.answer(stream);
-        console.log("sending our video stream to other user");
         // other user video stream (user A video to user B screen)
         const [video, videoContainer] = createVideoContainer(false, -1)
 
@@ -35,6 +33,7 @@ function openVideo(socket, myPeer) {
           });
           Object.keys(myPeer.connections).forEach((peerId) => {
             peers[peerId] = call;
+            peers[peerId].video = video;
           });
         });
       });
@@ -46,22 +45,22 @@ function openVideo(socket, myPeer) {
         connectToNewUser(myPeer, peerId, stream, playerId);
       });
       socket.on("startCall", (peerId) => {
-        console.log("starting call event triggered, with: ", peerId);
-        if (!peers[peerId]) {
-          connectToNewUser(myPeer, peerId, stream);
+        if (peers[peerId]) {
+          peers[peerId].video.classList.remove("hidden");
         }
       });
 
       socket.on("disconnected", (userData) => {
         const { peerId } = userData;
-        console.log("disconnected: ", peerId);
 
         if (peers[peerId]) {
           peers[peerId].close();
-      socket.on("endCall", ({ peerId }) => {
+        }
+      });
+
+      socket.on("endCall", (peerId) => {
         if (peers[peerId]) {
-          peers[peerId].close();
-          delete peers[peerId];
+          peers[peerId].video.classList.add("hidden");
         }
       });
       socket.on('mute', (kind, playerId) => {
@@ -74,18 +73,24 @@ function openVideo(socket, myPeer) {
             t.enabled = !t.enabled
           }
         })
+
+      socket.on("newPlayer", (userData) => {
+        const {
+          playerInfo: { peerId },
+        } = userData;
+        connectToNewUser(myPeer, peerId, stream);
       });
     });
 }
 
 /**
  * make calls when new user connect to our room
- * @param {uuid} userId
+ * @param {uuid} peerId
  * @param {*} stream
  */
-function connectToNewUser(myPeer, userId, stream, playerId) {
+function connectToNewUser(myPeer, peerId, stream, playerId) {
   // send this user our video stream
-  const call = myPeer.call(userId, stream);
+  const call = myPeer.call(peerId, stream);
   const [video, videoContainer] = createVideoContainer(false, playerId)
   // when they send us back their video stream, calls this event
   call.on("stream", (userVideoStream) => {
@@ -93,10 +98,11 @@ function connectToNewUser(myPeer, userId, stream, playerId) {
     addVideoStream(videoContainer, video, userVideoStream);
   });
   call.on("close", () => {
-    console.log("hanging up user: ", userId);
+    console.log("hanging up user: ", peerId);
     videoContainer.remove(); // cleanup video when they lave
   });
   peers[peerId] = call;
+  peers[peerId].video = video;
 }
 
 function addVideoStream(videoContainer, video, stream) {

@@ -153,24 +153,14 @@ module.exports = (io) => {
       socket.to(roomKey).emit("mute", kind, playerId);
     });
     // video start/stop call when players are close to each other
-    socket.on(
-      "playerNear",
-      ({ currentPeerId, currentSocketId, otherActor, roomKey }) => {
-        // to the specific user's SOCKET, send the PEER ID
-        // TODO just use the socket ID for the peerID
-        io.to(currentSocketId).emit("startCall", otherActor.peerId);
-        io.to(otherActor.playerId).emit("startCall", currentPeerId);
-      }
-    );
-    socket.on(
-      "playerFar",
-      ({ currentPeerId, currentSocketId, otherActor, roomKey }) => {
-        // to the specific user's SOCKET, send the PEER ID
-        // TODO just use the socket ID for the peerID
-        io.to(currentSocketId).emit("endCall", otherActor.peerId);
-        io.to(otherActor.playerId).emit("endCall", currentPeerId);
-      }
-    );
+    socket.on("playerNear", ({ currentSocketId, otherActorPeerId }) => {
+      io.to(currentSocketId).emit("startCall", otherActorPeerId);
+    });
+    socket.on("playerFar", ({ currentPeerId, currentSocketId, otherActor }) => {
+      // for some reason, for ending calls we need both
+      io.to(currentSocketId).emit("endCall", otherActor.peerId);
+      io.to(otherActor.playerId).emit("endCall", currentPeerId);
+    });
   });
 };
 

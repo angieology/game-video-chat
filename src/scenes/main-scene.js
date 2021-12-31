@@ -8,7 +8,6 @@ function detectCloseness({
   actor,
   otherActor,
   socket,
-  roomKey,
   currentPeerId,
   currentSocketId,
 }) {
@@ -17,20 +16,22 @@ function detectCloseness({
   const deltaY = Math.abs(actor.y - otherActor.y);
   const MAX_DISTANCE = 250;
   if (deltaX < MAX_DISTANCE && deltaY < MAX_DISTANCE) {
-    console.log("player close detected");
+    // don't send if no change from previous
+    if (otherActor.isInRange !== null && otherActor.isInRange == false) {
+      otherActor.isInRange = true;
+    }
     socket.emit("playerNear", {
-      currentPeerId,
       currentSocketId,
-      otherActor,
-      roomKey,
+      otherActorPeerId: otherActor.peerId,
     });
   } else {
-    console.log("player far detected");
+    if (otherActor.isInRange !== null && otherActor.isInRange == true) {
+      otherActor.isInRange = false;
+    }
     socket.emit("playerFar", {
       currentPeerId,
       currentSocketId,
       otherActor,
-      roomKey,
     });
   }
 }
@@ -227,10 +228,9 @@ export default class MainScene extends Phaser.Scene {
             otherActor.direction = direction;
           }
         }
-        // detect closeness to my player
         detectCloseness({
           actor: this.actor,
-          otherActor,
+          otherActor: playerInfo,
           socket: this.socket,
           roomKey: scene.state.roomKey,
           currentSocketId: this.socket.id,
@@ -318,6 +318,17 @@ export default class MainScene extends Phaser.Scene {
         }
         this.actor.moving = false;
         this.actor.anims.play(`${this.actor.sprite}_idle_down`, true);
+
+        scene.otherPlayers.getChildren().forEach((otherActor) => {
+          detectCloseness({
+            actor: this.actor,
+            otherActor,
+            socket: this.socket,
+            roomKey: scene.state.roomKey,
+            currentSocketId: this.socket.id,
+            currentPeerId: this.myPeer.id, // TODO add to 'this actor'
+          });
+        });
       }
 
       // Save previous position data
@@ -381,6 +392,7 @@ export default class MainScene extends Phaser.Scene {
       .setDepth(3);
 
     otherActor.playerId = playerInfo.playerId;
+    otherActor.peerId = playerInfo.peerId;
     otherActor.direction = playerInfo.direction;
     otherActor.sprite = playerInfo.sprite;
     scene.otherPlayers.add(otherActor);
