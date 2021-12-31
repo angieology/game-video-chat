@@ -38,12 +38,6 @@ function openVideo(socket, myPeer) {
         });
       });
 
-      socket.on("newPlayer", (userData) => {
-        console.log(userData);
-        const { playerInfo: { peerId, playerId } } = userData;
-        console.log("newPlayer: ", peerId);
-        connectToNewUser(myPeer, peerId, stream, playerId);
-      });
       socket.on("startCall", (peerId) => {
         if (peers[peerId]) {
           peers[peerId].video.classList.remove("hidden");
