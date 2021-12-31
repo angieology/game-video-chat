@@ -2,7 +2,39 @@ import Phaser from "phaser";
 import Peer from "peerjs";
 
 import { characterNames, actions, animations } from "../constants";
-import { openVideo } from "../video-client";
+import openVideo from "../video-client";
+
+function detectCloseness({
+  actor,
+  otherActor,
+  socket,
+  currentPeerId,
+  currentSocketId,
+}) {
+  // detect closeness to my player
+  const deltaX = Math.abs(actor.x - otherActor.x);
+  const deltaY = Math.abs(actor.y - otherActor.y);
+  const MAX_DISTANCE = 250;
+  if (deltaX < MAX_DISTANCE && deltaY < MAX_DISTANCE) {
+    // don't send if no change from previous
+    if (otherActor.isInRange !== null && otherActor.isInRange == false) {
+      otherActor.isInRange = true;
+    }
+    socket.emit("playerNear", {
+      currentSocketId,
+      otherActorPeerId: otherActor.peerId,
+    });
+  } else {
+    if (otherActor.isInRange !== null && otherActor.isInRange == true) {
+      otherActor.isInRange = false;
+    }
+    socket.emit("playerFar", {
+      currentPeerId,
+      currentSocketId,
+      otherActor,
+    });
+  }
+}
 
 export default class MainScene extends Phaser.Scene {
   constructor() {
@@ -170,6 +202,15 @@ export default class MainScene extends Phaser.Scene {
       const { playerInfo, numPlayers } = data;
       scene.addOtherPlayers(scene, playerInfo);
       scene.state.numPlayers = numPlayers;
+
+      detectCloseness({
+        actor: this.actor,
+        otherActor: playerInfo,
+        socket: this.socket,
+        roomKey: scene.state.roomKey,
+        currentSocketId: this.socket.id,
+        currentPeerId: this.myPeer.id, // TODO add to 'this actor'
+      });
     });
 
     this.socket.on("playerMoved", (playerInfo) => {
@@ -187,6 +228,14 @@ export default class MainScene extends Phaser.Scene {
             otherActor.direction = direction;
           }
         }
+        detectCloseness({
+          actor: this.actor,
+          otherActor: playerInfo,
+          socket: this.socket,
+          roomKey: scene.state.roomKey,
+          currentSocketId: this.socket.id,
+          currentPeerId: this.myPeer.id, // TODO add to 'this actor'
+        });
       });
     });
 
@@ -249,36 +298,44 @@ export default class MainScene extends Phaser.Scene {
       // Normalize and scale velocity so actor can't move faster diagonally
       this.actor.body.velocity.normalize().scale(speed);
 
-      const { x } = this.actor;
-      const { y } = this.actor;
-      const { direction } = this.actor;
-      const { prevPosition } = this.actor;
+      const { x, y, direction, prevPosition } = this.actor;
 
       if (prevPosition && (x !== prevPosition.x || y !== prevPosition.y)) {
         this.actor.moving = true;
         this.socket.emit("playerMovement", {
-          x: this.actor.x,
-          y: this.actor.y,
-          direction: this.actor.direction,
+          x,
+          y,
+          direction,
           roomKey: scene.state.roomKey,
         });
       } else {
         if (this.actor.moving) {
           this.socket.emit("playerStopping", {
-            x: this.actor.x,
-            y: this.actor.y,
+            x,
+            y,
             roomKey: scene.state.roomKey,
           });
         }
         this.actor.moving = false;
         this.actor.anims.play(`${this.actor.sprite}_idle_down`, true);
+
+        scene.otherPlayers.getChildren().forEach((otherActor) => {
+          detectCloseness({
+            actor: this.actor,
+            otherActor,
+            socket: this.socket,
+            roomKey: scene.state.roomKey,
+            currentSocketId: this.socket.id,
+            currentPeerId: this.myPeer.id, // TODO add to 'this actor'
+          });
+        });
       }
 
       // Save previous position data
       this.actor.prevPosition = {
-        x: this.actor.x,
-        y: this.actor.y,
-        direction: this.actor.direction,
+        x,
+        y,
+        direction,
       };
 
       this.actor.nametag.setPosition(
@@ -335,6 +392,7 @@ export default class MainScene extends Phaser.Scene {
       .setDepth(3);
 
     otherActor.playerId = playerInfo.playerId;
+    otherActor.peerId = playerInfo.peerId;
     otherActor.direction = playerInfo.direction;
     otherActor.sprite = playerInfo.sprite;
     scene.otherPlayers.add(otherActor);

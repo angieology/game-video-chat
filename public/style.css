@@ -1,15 +1,52 @@
 body {
-    background-color: #101212;
-    color: white;
+  background-color: #101212;
+  color: white;
 }
 
 canvas {
-    border-radius: 6px;
+  border-radius: 6px;
 }
 
 #game {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+  position: absolute;
+  top: 5%;
+  left: 0;
+}
+
+#video-grid {
+  width: 80%;
+
+  display: flex;
+  flex-wrap: row;
+  justify-content: center;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+}
+
+video {
+  width: 150px;
+  height: 100px;
+  object-fit: cover;
+}
+body {
+  display: grid;
+  grid-template-columns: 60% 40%;
+}
+iframe {
+  position: absolute;
+  right: 0;
+  height: 100%;
+  width: 30vw;
+}
+
+.hidden {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border: 0;
+}
+
+.visibility-hidden {
+  visibility: hidden;
 }

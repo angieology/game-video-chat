@@ -139,7 +139,7 @@ module.exports = (io) => {
       socket.emit("roomCreated", key);
     });
 
-    socket.on('mute', async (kind, playerId) => {
+    socket.on("mute", async (kind, playerId) => {
       let roomKey = 0;
       for (const currentRoomKey in gameRooms) {
         const currentRoom = gameRooms[currentRoomKey];
@@ -149,9 +149,18 @@ module.exports = (io) => {
         }
       }
 
-      console.log(`muting ${kind} ${playerId}`)
-      socket.to(roomKey).emit('mute', kind, playerId);
-    })
+      console.log(`muting ${kind} ${playerId}`);
+      socket.to(roomKey).emit("mute", kind, playerId);
+    });
+    // video start/stop call when players are close to each other
+    socket.on("playerNear", ({ currentSocketId, otherActorPeerId }) => {
+      io.to(currentSocketId).emit("startCall", otherActorPeerId);
+    });
+    socket.on("playerFar", ({ currentPeerId, currentSocketId, otherActor }) => {
+      // for some reason, for ending calls we need both
+      io.to(currentSocketId).emit("endCall", otherActor.peerId);
+      io.to(otherActor.playerId).emit("endCall", currentPeerId);
+    });
   });
 };
 
